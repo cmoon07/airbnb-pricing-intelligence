@@ -25,7 +25,7 @@ The task was formulated as a binary classification problem:
 
 ## Dataset
 
-The project uses the **New York City Airbnb Open Data** dataset (airbnbListingsData.csv), which contains information about Airbnb listings, including:
+The project uses the **New York City Airbnb Open Data** dataset. The data is included as data_capstone/airbnbListingsData.zip and the notebook reads it directly. The dataset contains information about Airbnb listings, including:
 
 - Listing details
 - Room type and property characteristics
