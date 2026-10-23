@@ -2,15 +2,15 @@
 
 ## Overview
 
-This project develops a machine learning pipeline to classify Airbnb listings into high- and low-price categories using property characteristics, host information, and review metrics. The goal is to identify key factors associated with Airbnb pricing and build predictive models that can support hospitality investment and market analysis decisions.
+This project develops a machine learning pipeline to classify NYC Airbnb listings into high-priced (top 25%) and low-price categories using property characteristics, host information, and review metrics. The goal is to identify key factors associated with Airbnb pricing and build predictive models that can support hospitality investment and market analysis decisions.
 
-The project explores the full machine learning workflow, including exploratory data analysis, data preprocessing, feature engineering, model development, hyperparameter tuning, and performance evaluation. Multiple classification approaches were compared, including traditional machine learning models and a neural network.
+The project explores the full machine learning workflow, including exploratory data analysis, cleaning, encoding, model training, hyperparameter tuning, and performance evaluation. Multiple classification approaches were compared, including Logistic Regression, a Decision Tree, and a feed-forward neural network against a majority-class baseline.
 
 ---
 
 ## Problem Statement
 
-Airbnb listing prices are influenced by a variety of factors, including property features, location, host characteristics, and customer reviews. Understanding these relationships can help hospitality analysts identify valuable listings and better understand pricing patterns.
+A hospitality investment group sorts short-term rentals into pricing tiers by hand using neighborhood reputation, room type, and host reviews. That process is slow and inconsistent as the portfolio grows.
 
 This project addresses the following question:
 
@@ -18,14 +18,14 @@ This project addresses the following question:
 
 The task was formulated as a binary classification problem:
 
-- **High-priced listing:** Listing price above the selected threshold
-- **Low-priced listing:** Listing price below the selected threshold
+- **High-priced listing:** Listing price above the 75th percentile ($180/night)
+- **Low-priced listing:** Listing price below the 75th percentile
 
 ---
 
 ## Dataset
 
-The project uses the **New York City Airbnb Open Data** dataset, which contains information about Airbnb listings, including:
+The project uses the **New York City Airbnb Open Data** dataset (airbnbListingsData.csv), which contains information about Airbnb listings, including:
 
 - Listing details
 - Room type and property characteristics
@@ -42,13 +42,12 @@ The original price variable was processed to reduce the impact of extreme outlie
 
 Real-world datasets often contain missing values, inconsistent formats, and high-dimensional categorical features. The following preprocessing steps were performed:
 
-- Removed unnecessary text-heavy columns with limited predictive value
-- Handled missing values using appropriate imputation techniques
-- Converted categorical variables into numerical representations using encoding methods
-- Converted boolean variables into numerical features
-- Scaled numerical features for neural network training
-- Applied winsorization to reduce the effect of extreme price values
-- Used feature selection techniques to identify important predictive features
+- Dropped long free-text columns (description, neighborhood_overview, host_about) that were mostly missing or would need NLP
+- Filled missing host_response_rate, host_acceptance_rate, bedrooms, and beds with column means
+- One-hot encoded neighbourhood_group_cleansed, room_type, instant_bookable, and has_availability
+- Kept the 48 numeric and encoded columns as model inputs, excluding price
+- Standardized features with StandardScaler (fit on training data only) for the neural network
+- Split 67% train / 33% test with a fixed random seed
 
 The final dataset was prepared for both traditional machine learning models and neural network training.
 
@@ -73,18 +72,18 @@ Key observations included the presence of significant price outliers and relatio
 Three classification approaches were evaluated:
 
 ### Logistic Regression
-Used as a baseline model due to its interpretability and ability to establish a performance benchmark.
+Interpretable model, with features standardized inside a pipeline.
 
 ### Decision Tree Classifier
-Used to capture nonlinear relationships while maintaining interpretability through feature importance analysis.
+Tuned with 5-fold grid search over max_depth and min_samples_leaf together, optimizing F1 on the training split.
 
 ### Neural Network
-A feed-forward neural network was implemented using TensorFlow/Keras to learn more complex relationships within the feature space.
+Three hidden layers with ReLU and a sigmoid output, trained with SGD (learning rate 0.001) for 200 epochs with a 20% validation split.
 
 Neural Network Architecture:
 
 ```
-Input Layer
+Input Layer (48 features)
       ↓
 Dense Layer (64 units, ReLU)
       ↓
@@ -103,17 +102,28 @@ Models were evaluated using:
 
 - Accuracy
 - F1 Score
+- ROC-AUC
 
-F1 score was emphasized because it provides a better measure of performance when considering both false positives and false negatives.
+F1 score was emphasized because it provides a better measure of performance when considering both false positives and false negatives. Especially since it's only about a quarter of listings that are high-priced, and a model can look accurate while missing most of them. 
 
 ### Results
 
-| Model | Accuracy | F1 Score |
-|------|----------|----------|
-| Decision Tree | 82.5% | 59.5% |
-| Neural Network | 84.9% | 67.5% |
+| Model | Accuracy | F1 Score | ROC-AUC |
+|------|----------|----------|----------|
+| Majority-class baseline (always "low) | 74.3% | 0.000 | 0.500 |
+| Logistic Regression | 83.2% | 0.619 | 0.870 |
+| Decision Tree | 82.8% | 0.634 | 0.872 |
+| Neural Network | 84.7% | 0.668 | 0.893 |
 
-The neural network achieved the strongest overall performance, improving both accuracy and F1 score compared to the decision tree. The higher F1 score indicates that the neural network was better able to identify high-priced listings while balancing classification errors.
+All three models clearly beat the baseline and rank listings well (ROC-AUC 0.87-0.89). The neural network achieved the strongest overall performance, improving both accuracy and F1 score compared to the decision tree. However, its lead is modest with about 2 points of accuracy and 3-5 points of F1. Logistic Regression and Decision Tree come close while being far easier to explain, so they're strong choices when every prediction must be justified.
+
+---
+
+## Known Limitations
+
+- Results come from a single train/test split, so differences of 1-2 points between models may be partly noise (cross-validation would confirm the ranking)
+- Mean imputation ignores whether a value was missing, which can itself carry signal
+- Borough and neighborhood may act as proxies for income and demographics, so errors should be audited by borough before any deployment
 
 ---
 
@@ -159,11 +169,10 @@ The neural network achieved the strongest overall performance, improving both ac
 
 Potential improvements include:
 
-- Deploying the model as an interactive web application using Streamlit
-- Adding SHAP analysis for improved model interpretability
-- Incorporating geographic features such as neighborhood-level information
-- Testing ensemble methods such as Random Forest and XGBoost
-- Expanding the model into a pricing recommendation system
+- Tune the decision threshold to the client's cost of missing a premium listing
+- Confirm the model ranking with cross-validation
+- Try gradient-boosted trees (for example, XGBoost or LightGBM)
+- Audit error rates by borough before any deployment
 
 ---
 
